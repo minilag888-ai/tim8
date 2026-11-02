@@ -3,6 +3,9 @@
 # Vlasnik: Emilija. Radi iz korena repozitorijuma u Git Bash-u (Windows) ili bash-u (Linux/macOS).
 set -euo pipefail
 cd "$(dirname "$0")"
+# Git Bash (MSYS) inače pretvara putanje kao /reports u C:/Program Files/Git/reports pre poziva docker-a.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL="*"
 
 COMPOSE="docker compose"
 ADMIN_URL="http://127.0.0.1:${ADMIN_HOST_PORT:-18082}"
