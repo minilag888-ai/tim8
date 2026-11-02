@@ -1,0 +1,33 @@
+# Checkpoint 1: profil "standalone" (Project Info §15.1, §16.4). Pun klaster dolazi u Checkpoint 2.
+name: tim08
+
+services:
+  standalone:
+    profiles: ["standalone"]
+    build: .
+    image: tim08/dlsm:latest
+    environment:
+      NODE_ID: standalone
+      DATA_DIR: /var/lib/dlsm
+      TEST_MODE: ${TEST_MODE:-true}
+      MEMTABLE_MAX_BYTES: ${MEMTABLE_MAX_BYTES:-1048576}
+      DLSM_TEST_BOOTSTRAP_FAILPOINTS_B64: ${DLSM_TEST_BOOTSTRAP_FAILPOINTS_B64:-}
+    ports:
+      - "${PUBLIC_HOST_PORT:-18080}:8080"
+      - "${ADMIN_HOST_PORT:-18082}:8082"
+    volumes:
+      - standalone-data:/var/lib/dlsm
+
+  # ./dbctl test checkpoint-1 ... : isti jar, pokreće obavezne scenarije (Checkpoint 1 §29)
+  student-tests:
+    profiles: ["tests"]
+    build: .
+    image: tim08/dlsm:latest
+    entrypoint: ["java", "-cp", "/app/dlsm.jar", "rs.raf.dlsm.testkit.Cp1Runner"]
+    environment:
+      TEST_MODE: "true"
+    volumes:
+      - ./reports:/reports
+
+volumes:
+  standalone-data:

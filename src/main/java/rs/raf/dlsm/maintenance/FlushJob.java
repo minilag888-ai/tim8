@@ -1,13 +1,20 @@
 package rs.raf.dlsm.maintenance;
 
+import rs.raf.dlsm.engine.EngineException;
+
 /**
- * Flush po 13 koraka (Checkpoint 1 §19.1) i ručni flush (§23.1). Vlasnik: Ivona.
- * OSNOVA: samo potpis.
+ * Ručni flush (Checkpoint 1 §23.1): uzima ciljni redni broj i radi FIFO flush dok ga manifest ne pokrije.
+ * Sam algoritam od 13 koraka je u {@link MaintenanceService}, koji serijalizuje sve održavanje. Vlasnik: Ivona.
  */
 public final class FlushJob {
 
-    /** Radi FIFO flush dok flushedThroughSequence ne dostigne targetSequence. */
-    public FlushResult run(long targetSequence) {
-        throw new UnsupportedOperationException("TODO Ivona: FlushJob");
+    private final MaintenanceService service;
+
+    public FlushJob(MaintenanceService service) {
+        this.service = service;
+    }
+
+    public FlushResult run(long deadlineNanos) throws EngineException {
+        return service.manualFlush(deadlineNanos);
     }
 }
