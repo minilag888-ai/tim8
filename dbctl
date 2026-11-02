@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# dbctl — jedan ulaz za izgradnju, životni ciklus, testove i pregled (Project Info §24.2, Checkpoint 1 §32).
+# Vlasnik: Emilija. Radi iz korena repozitorijuma u Git Bash-u (Windows) ili bash-u (Linux/macOS).
+set -euo pipefail
+cd "$(dirname "$0")"
+
+COMPOSE="docker compose"
+ADMIN_URL="http://127.0.0.1:${ADMIN_HOST_PORT:-18082}"
+READY_TIMEOUT_S=20
+
+usage() {
+  cat <<USAGE
+Upotreba: ./dbctl <komanda>
+  build                         izgradi Docker sliku
+  up standalone                 pokreni standalone i sačekaj spremnost
+  down                          zaustavi kontejnere (volumen ostaje)
+  reset                         zaustavi i obriši volumene i izveštaje
+  status                        status čvora (JSON)
+  logs [-f]                     logovi servisa
+  test checkpoint-1 --list | --seed N | --case ID --seed N
+  inspect manifest | wal | sstable <id>
+USAGE
+}
+
+wait_ready() {
+  local deadline=$((SECONDS + READY_TIMEOUT_S))
+  while (( SECONDS < deadline )); do
+    if curl -fsS "$ADMIN_URL/health/ready" >/dev/null 2>&1; then
+      echo "standalone je spreman"
+      return 0
+    fi
+    sleep 0.5
+  done
+  echo "standalone nije postao spreman za ${READY_TIMEOUT_S}s" >&2
+  curl -sS "$ADMIN_URL/health/ready" >&2 || true
+  return 1
+}
+
+cmd="${1:-}"
+shift || true
+case "$cmd" in
+  build)
+    $COMPOSE --profile standalone build
+    ;;
+  up)
+    profile="${1:-standalone}"
+    if [[ "$profile" != "standalone" ]]; then
+      echo "Profil '$profile' dolazi u Checkpoint 2" >&2
+      exit 2
+    fi
+    $COMPOSE --profile standalone up -d
+    wait_ready
+    ;;
+  down)
+    $COMPOSE --profile standalone down
+    ;;
+  reset)
+    $COMPOSE --profile standalone down -v
+    rm -rf reports/artifacts reports/*.json
+    ;;
+  status)
+    curl -fsS "$ADMIN_URL/admin/v1/status" 2>/dev/null || curl -sS "$ADMIN_URL/health/ready"
+    echo
+    ;;
+  logs)
+    $COMPOSE --profile standalone logs "$@"
+    ;;
+  test)
+    suite="${1:-}"
+    shift || true
+    if [[ "$suite" != "checkpoint-1" ]]; then
+      echo "Upotreba: ./dbctl test checkpoint-1 --list | --seed N | --case ID --seed N" >&2
+      exit 2
+    fi
+    mkdir -p reports
+    if [[ "${DBCTL_LOCAL:-0}" == "1" ]]; then
+      # bez Docker-a: lokalni JDK 21 (izgradnja kroz Maven Wrapper)
+      ./mvnw -q -B -DskipTests package
+      java -cp target/dlsm.jar rs.raf.dlsm.testkit.Cp1Runner "$@" --reports reports
+    else
+      # testovi rade u kontejneru; svaki scenario pokreće svoje procese baze nad izolovanim direktorijumima
+      $COMPOSE --profile tests run --rm student-tests "$@" --reports /reports
+    fi
+    ;;
+  inspect)
+    what="${1:-}"
+    if [[ -z "$what" ]]; then
+      usage >&2
+      exit 2
+    fi
+    # offline pregled volumena standalone čvora (samo čitanje)
+    $COMPOSE --profile standalone run --rm --no-deps -T --entrypoint java standalone \
+      -cp /app/dlsm.jar rs.raf.dlsm.cli.InspectCli --data-dir /var/lib/dlsm "$@"
+    ;;
+  ""|help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "Nepoznata komanda: $cmd" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

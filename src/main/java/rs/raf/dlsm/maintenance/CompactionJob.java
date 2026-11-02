@@ -1,12 +1,21 @@
 package rs.raf.dlsm.maintenance;
 
+import rs.raf.dlsm.engine.EngineException;
+
 /**
- * Major compaction i bezbedna zamena manifesta (Checkpoint 1 §20, §23.2). Vlasnik: Ivona,
- * uz Vojislavljev MergingIterator i SSTableWriter. OSNOVA: samo potpis.
+ * Ručni major compaction (Checkpoint 1 §20, §23.2): sažima sve trenutno objavljene tabele u jednu,
+ * zadržava tombstone-e i objavljuje jedan zamenski manifest. Algoritam je u {@link MaintenanceService}.
+ * Vlasnik: Ivona.
  */
 public final class CompactionJob {
 
-    public CompactionResult run() {
-        throw new UnsupportedOperationException("TODO Ivona: CompactionJob");
+    private final MaintenanceService service;
+
+    public CompactionJob(MaintenanceService service) {
+        this.service = service;
+    }
+
+    public CompactionResult run(long deadlineNanos) throws EngineException {
+        return service.manualCompaction(deadlineNanos);
     }
 }
