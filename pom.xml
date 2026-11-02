@@ -14,18 +14,12 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Sve verzije su fiksirane (Project Info 14.3). -->
-        <jackson.version>2.18.2</jackson.version>
         <junit.version>5.11.4</junit.version>
     </properties>
 
     <dependencies>
-        <!-- JSON za HTTP API, status i manifest. HTTP server je iz JDK-a (com.sun.net.httpserver). -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-
+        <!-- Glavni kod nema spoljnih zavisnosti: HTTP server je iz JDK-a (com.sun.net.httpserver),
+             a JSON je rs.raf.dlsm.json.Json. -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
